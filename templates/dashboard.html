@@ -6,7 +6,7 @@
 </head>
 <body class="bg-light">
   <nav class="navbar navbar-dark bg-dark px-4">
-    <span class="navbar-brand">TaskOps Sprint Manager</span>
+    <span class="navbar-brand">TaskOps Team Sprint Manager</span>
     <div class="d-flex align-items-center">
       <span class="text-light me-3">Logged in as: <strong>{{ username }}</strong></span>
       <a href="/api/health" target="_blank" class="btn btn-outline-info btn-sm me-2">API Health</a>
@@ -43,7 +43,15 @@
 
     <table class="table table-bordered bg-white shadow-sm align-middle">
       <thead class="table-secondary">
-        <tr><th>ID</th><th>Task Description</th><th>Priority</th><th>Status</th><th>Actions</th></tr>
+        <tr>
+          <th>ID</th>
+          <th>Task Description</th>
+          <th>Priority</th>
+          <th>Status</th>
+          <th>Added By</th>
+          <th>Last Toggled By</th>
+          <th>Actions</th>
+        </tr>
       </thead>
       <tbody>
         {% for t in tasks %}
@@ -56,6 +64,15 @@
             </span>
           </td>
           <td><span class="badge {{ 'bg-success' if t['status']=='Completed' else 'bg-primary' }}">{{ t['status'] }}</span></td>
+          <td><span class="badge bg-light text-dark border">@{{ t['created_by'] }}</span></td>
+          <td>
+            {% if t['updated_by'] and t['updated_by'] != '—' %}
+              <span class="badge bg-info text-dark">@{{ t['updated_by'] }}</span>
+              <small class="text-muted d-block" style="font-size: 0.75rem;">{{ t['updated_at'] }}</small>
+            {% else %}
+              <span class="text-muted small">Not toggled yet</span>
+            {% endif %}
+          </td>
           <td>
             <a href="/toggle/{{ t['id'] }}" class="btn btn-sm btn-outline-primary">Toggle Status</a>
             <a href="/delete/{{ t['id'] }}" class="btn btn-sm btn-outline-danger">Delete</a>

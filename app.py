@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime
 import sqlite3, os
 
 app = Flask(__name__)
@@ -29,9 +30,20 @@ def init_db():
                 title TEXT NOT NULL,
                 priority TEXT NOT NULL,
                 status TEXT NOT NULL,
-                FOREIGN KEY (user_id) REFERENCES users (id)
+                created_by TEXT DEFAULT 'admin',
+                updated_by TEXT DEFAULT '—',
+                updated_at TEXT DEFAULT ''
             )
         """)
+        # Safely add audit columns if upgrading an existing tasks table
+        existing_cols = [row["name"] for row in conn.execute("PRAGMA table_info(tasks)").fetchall()]
+        if "created_by" not in existing_cols:
+            conn.execute("ALTER TABLE tasks ADD COLUMN created_by TEXT DEFAULT 'admin'")
+        if "updated_by" not in existing_cols:
+            conn.execute("ALTER TABLE tasks ADD COLUMN updated_by TEXT DEFAULT '—'")
+        if "updated_at" not in existing_cols:
+            conn.execute("ALTER TABLE tasks ADD COLUMN updated_at TEXT DEFAULT ''")
+
         if not conn.execute("SELECT id FROM users WHERE username = 'admin'").fetchone():
             conn.execute(
                 "INSERT INTO users (username, password) VALUES (?, ?)",
@@ -72,10 +84,7 @@ def dashboard():
         return redirect(url_for("login"))
     status_filter = request.args.get("status", "All")
     with get_db() as conn:
-        all_tasks = conn.execute(
-            "SELECT * FROM tasks WHERE user_id = ? ORDER BY id DESC",
-            (session["user_id"],)
-        ).fetchall()
+        all_tasks = conn.execute("SELECT * FROM tasks ORDER BY id DESC").fetchall()
 
     tasks = [t for t in all_tasks if t["status"] == status_filter] if status_filter != "All" else all_tasks
 
@@ -91,10 +100,11 @@ def dashboard():
 def add_task():
     if "user_id" not in session:
         return redirect(url_for("login"))
+    now = datetime.now().strftime("%d %b, %I:%M %p")
     with get_db() as conn:
         conn.execute(
-            "INSERT INTO tasks (user_id, title, priority, status) VALUES (?, ?, ?, ?)",
-            (session["user_id"], request.form.get("title"), request.form.get("priority"), "In Progress")
+            "INSERT INTO tasks (user_id, title, priority, status, created_by, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (session["user_id"], request.form.get("title"), request.form.get("priority"), "In Progress", session["username"], "—", now)
         )
     return redirect(url_for("dashboard"))
 
@@ -102,14 +112,15 @@ def add_task():
 def toggle_task(task_id):
     if "user_id" not in session:
         return redirect(url_for("login"))
+    now = datetime.now().strftime("%d %b, %I:%M %p")
     with get_db() as conn:
-        task = conn.execute(
-            "SELECT status FROM tasks WHERE id = ? AND user_id = ?",
-            (task_id, session["user_id"])
-        ).fetchone()
+        task = conn.execute("SELECT status FROM tasks WHERE id = ?", (task_id,)).fetchone()
         if task:
             new_status = "Completed" if task["status"] == "In Progress" else "In Progress"
-            conn.execute("UPDATE tasks SET status = ? WHERE id = ?", (new_status, task_id))
+            conn.execute(
+                "UPDATE tasks SET status = ?, updated_by = ?, updated_at = ? WHERE id = ?",
+                (new_status, session["username"], now, task_id)
+            )
     return redirect(url_for("dashboard"))
 
 @app.route("/delete/<int:task_id>")
@@ -117,15 +128,12 @@ def delete_task(task_id):
     if "user_id" not in session:
         return redirect(url_for("login"))
     with get_db() as conn:
-        conn.execute(
-            "DELETE FROM tasks WHERE id = ? AND user_id = ?",
-            (task_id, session["user_id"])
-        )
+        conn.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
     return redirect(url_for("dashboard"))
 
 @app.route("/api/health")
 def health():
-    return jsonify({"status": "healthy", "service": "taskops-web", "version": "2.0"})
+    return jsonify({"status": "healthy", "service": "taskops-web", "version": "2.1"})
 
 @app.route("/logout")
 def logout():
