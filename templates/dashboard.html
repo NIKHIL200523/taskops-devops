@@ -6,19 +6,26 @@
 </head>
 <body class="bg-light">
   <nav class="navbar navbar-dark bg-dark px-4">
-    <span class="navbar-brand">TaskOps Sprint & Task Manager</span>
-    <div>
+    <span class="navbar-brand">TaskOps Sprint Manager</span>
+    <div class="d-flex align-items-center">
+      <span class="text-light me-3">Logged in as: <strong>{{ username }}</strong></span>
       <a href="/api/health" target="_blank" class="btn btn-outline-info btn-sm me-2">API Health</a>
       <a href="/logout" class="btn btn-outline-light btn-sm">Logout</a>
     </div>
   </nav>
+
   <div class="container mt-4">
-    <form action="/add" method="POST" class="row g-2 mb-4">
-      <div class="col-md-6">
-        <input type="text" name="title" class="form-control" placeholder="Enter task description (e.g., Fix login API bug)" required>
-      </div>
+    <div class="row g-3 mb-4 text-center">
+      <div class="col-md-3"><div class="card p-3 shadow-sm"><h6>Total Tasks</h6><h3>{{ stats.total }}</h3></div></div>
+      <div class="col-md-3"><div class="card p-3 shadow-sm border-danger"><h6>High Priority</h6><h3 class="text-danger">{{ stats.high }}</h3></div></div>
+      <div class="col-md-3"><div class="card p-3 shadow-sm border-primary"><h6>In Progress</h6><h3 class="text-primary">{{ stats.progress }}</h3></div></div>
+      <div class="col-md-3"><div class="card p-3 shadow-sm border-success"><h6>Completed</h6><h3 class="text-success">{{ stats.done }}</h3></div></div>
+    </div>
+
+    <form action="/add" method="POST" class="row g-2 mb-3">
+      <div class="col-md-6"><input type="text" name="title" class="form-control" placeholder="Enter task description (e.g., Fix login API bug)" required></div>
       <div class="col-md-4">
-        <select name="env" class="form-select">
+        <select name="priority" class="form-select">
           <option value="High Priority">High Priority</option>
           <option value="Medium Priority" selected>Medium Priority</option>
           <option value="Low Priority">Low Priority</option>
@@ -27,6 +34,13 @@
       <div class="col-md-2"><button class="btn btn-success w-100">Add Task</button></div>
     </form>
 
+    <div class="mb-3">
+      <span class="me-2 fw-bold">Filter:</span>
+      <a href="/dashboard?status=All" class="btn btn-sm {{ 'btn-dark' if current_filter=='All' else 'btn-outline-dark' }}">All</a>
+      <a href="/dashboard?status=In Progress" class="btn btn-sm {{ 'btn-primary' if current_filter=='In Progress' else 'btn-outline-primary' }}">In Progress</a>
+      <a href="/dashboard?status=Completed" class="btn btn-sm {{ 'btn-success' if current_filter=='Completed' else 'btn-outline-success' }}">Completed</a>
+    </div>
+
     <table class="table table-bordered bg-white shadow-sm align-middle">
       <thead class="table-secondary">
         <tr><th>ID</th><th>Task Description</th><th>Priority</th><th>Status</th><th>Actions</th></tr>
@@ -34,25 +48,17 @@
       <tbody>
         {% for t in tasks %}
         <tr>
-          <td>{{ t[0] }}</td>
-          <td>{{ t[1] }}</td>
+          <td>{{ t['id'] }}</td>
+          <td>{{ t['title'] }}</td>
           <td>
-            {% if t[2] == 'High Priority' %}
-              <span class="badge bg-danger">{{ t[2] }}</span>
-            {% elif t[2] == 'Medium Priority' %}
-              <span class="badge bg-warning text-dark">{{ t[2] }}</span>
-            {% else %}
-              <span class="badge bg-secondary">{{ t[2] }}</span>
-            {% endif %}
-          </td>
-          <td>
-            <span class="badge {{ 'bg-success' if t[3]=='Completed' else 'bg-primary' }}">
-              {{ 'In Progress' if t[3]=='Running' else t[3] }}
+            <span class="badge {{ 'bg-danger' if t['priority']=='High Priority' else ('bg-warning text-dark' if t['priority']=='Medium Priority' else 'bg-secondary') }}">
+              {{ t['priority'] }}
             </span>
           </td>
+          <td><span class="badge {{ 'bg-success' if t['status']=='Completed' else 'bg-primary' }}">{{ t['status'] }}</span></td>
           <td>
-            <a href="/toggle/{{ t[0] }}" class="btn btn-sm btn-outline-primary">Mark {{ 'In Progress' if t[3]=='Completed' else 'Done' }}</a>
-            <a href="/delete/{{ t[0] }}" class="btn btn-sm btn-outline-danger">Delete</a>
+            <a href="/toggle/{{ t['id'] }}" class="btn btn-sm btn-outline-primary">Toggle Status</a>
+            <a href="/delete/{{ t['id'] }}" class="btn btn-sm btn-outline-danger">Delete</a>
           </td>
         </tr>
         {% endfor %}
