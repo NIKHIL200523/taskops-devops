@@ -6,7 +6,7 @@
 </head>
 <body class="bg-light">
   <nav class="navbar navbar-dark bg-dark px-4">
-    <span class="navbar-brand">TaskOps Deployment Tracker</span>
+    <span class="navbar-brand">TaskOps Sprint & Task Manager</span>
     <div>
       <a href="/api/health" target="_blank" class="btn btn-outline-info btn-sm me-2">API Health</a>
       <a href="/logout" class="btn btn-outline-light btn-sm">Logout</a>
@@ -14,29 +14,45 @@
   </nav>
   <div class="container mt-4">
     <form action="/add" method="POST" class="row g-2 mb-4">
-      <div class="col-md-6"><input type="text" name="title" class="form-control" placeholder="Task / Service Name (e.g., Auth Microservice)" required></div>
+      <div class="col-md-6">
+        <input type="text" name="title" class="form-control" placeholder="Enter task description (e.g., Fix login API bug)" required>
+      </div>
       <div class="col-md-4">
         <select name="env" class="form-select">
-          <option value="AWS EC2 - Prod">AWS EC2 - Prod</option>
-          <option value="Docker - Staging">Docker - Staging</option>
-          <option value="Localhost - Dev">Localhost - Dev</option>
+          <option value="High Priority">High Priority</option>
+          <option value="Medium Priority" selected>Medium Priority</option>
+          <option value="Low Priority">Low Priority</option>
         </select>
       </div>
       <div class="col-md-2"><button class="btn btn-success w-100">Add Task</button></div>
     </form>
 
-    <table class="table table-bordered bg-white shadow-sm">
-      <thead class="table-secondary"><tr><th>ID</th><th>Task / Service</th><th>Environment</th><th>Status</th><th>Actions</th></tr></thead>
+    <table class="table table-bordered bg-white shadow-sm align-middle">
+      <thead class="table-secondary">
+        <tr><th>ID</th><th>Task Description</th><th>Priority</th><th>Status</th><th>Actions</th></tr>
+      </thead>
       <tbody>
         {% for t in tasks %}
         <tr>
           <td>{{ t[0] }}</td>
           <td>{{ t[1] }}</td>
-          <td><span class="badge bg-info text-dark">{{ t[2] }}</span></td>
-          <td><span class="badge {{ 'bg-success' if t[3]=='Completed' else 'bg-warning text-dark' }}">{{ t[3] }}</span></td>
           <td>
-            <a href="/toggle/{{ t[0] }}" class="btn btn-sm btn-primary">Toggle Status</a>
-            <a href="/delete/{{ t[0] }}" class="btn btn-sm btn-danger">Delete</a>
+            {% if t[2] == 'High Priority' %}
+              <span class="badge bg-danger">{{ t[2] }}</span>
+            {% elif t[2] == 'Medium Priority' %}
+              <span class="badge bg-warning text-dark">{{ t[2] }}</span>
+            {% else %}
+              <span class="badge bg-secondary">{{ t[2] }}</span>
+            {% endif %}
+          </td>
+          <td>
+            <span class="badge {{ 'bg-success' if t[3]=='Completed' else 'bg-primary' }}">
+              {{ 'In Progress' if t[3]=='Running' else t[3] }}
+            </span>
+          </td>
+          <td>
+            <a href="/toggle/{{ t[0] }}" class="btn btn-sm btn-outline-primary">Mark {{ 'In Progress' if t[3]=='Completed' else 'Done' }}</a>
+            <a href="/delete/{{ t[0] }}" class="btn btn-sm btn-outline-danger">Delete</a>
           </td>
         </tr>
         {% endfor %}
